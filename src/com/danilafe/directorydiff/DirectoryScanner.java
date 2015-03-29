@@ -129,7 +129,7 @@ public class DirectoryScanner {
 		generateDiffMap(mainNode, folders.get(dir1), folders.get(dir2));
 	}
 	
-	private void generateDiffMap(DefaultMutableTreeNode node, Folder one, Folder two){
+	private int generateDiffMap(DefaultMutableTreeNode node, Folder one, Folder two){
 		for(Entity e : one.getContainedFiles()){
 			if(e instanceof Folder){
 				Folder toLook = (Folder) e;
@@ -147,12 +147,14 @@ public class DirectoryScanner {
 				if(two.getItem(toLook.getName(), toLook.getExtension()) == null) node.add(new DefaultMutableTreeNode(toLook.getName()));
 			}
 		}
+		int leafCount = node.getLeafCount();
 		for(Entity e : two.getContainedFiles()){
 			if(!(e instanceof Folder)) {
 				Item toLook = (Item) e;
 				if(one.getItem(toLook.getName(), toLook.getExtension()) == null) node.add(new DefaultMutableTreeNode(toLook.getName()));
 			}
 		}
+		return leafCount;
 	}
 
 	private void copyFiles(Folder one, Folder two){
@@ -194,4 +196,5 @@ public class DirectoryScanner {
 		mainNode.removeAllChildren();
 		generateDiffMap(mainNode, folders.get(dir1), folders.get(dir2));
 	}
+	
 }
