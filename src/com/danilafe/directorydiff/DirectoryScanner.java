@@ -18,12 +18,17 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTree;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.tree.DefaultMutableTreeNode;
+
 import com.danilafe.directorydiff.DirectoryDiff.Entity;
 import com.danilafe.directorydiff.DirectoryDiff.Folder;
 import com.danilafe.directorydiff.DirectoryDiff.Item;
+import com.sun.jmx.snmp.tasks.Task;
 
 public class DirectoryScanner {
 
@@ -81,10 +86,31 @@ public class DirectoryScanner {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				copyFiles(folders.get(dir1), folders.get(dir2));
-				JOptionPane.showMessageDialog(mainFrame, "Copy Complete!");
-				updateDiffMap();
+				final JFrame progressFrame = new JFrame("Progress...");
+				final JProgressBar progress = new JProgressBar();
+				progress.setMaximum(generateDiffMap(new DefaultMutableTreeNode(), folders.get(dir1), folders.get(dir2)));
+				progress.setMinimum(0);
+				progress.setValue(0);
+				final JLabel status = new JLabel("Current Progress: ");
 				
+				progressFrame.setSize(400, 150);
+				progressFrame.setLayout(new GridLayout(0,1));
+				progressFrame.add(status);
+				progressFrame.add(progress);
+				progressFrame.setVisible(true);
+				progressFrame.revalidate();
+				
+				Thread copyFiles = new Thread() {		
+					@Override
+					public void run() {
+						copyFiles(folders.get(dir1), folders.get(dir2), progress, true, status);
+						progressFrame.setVisible(false);
+						progressFrame.dispose();
+						JOptionPane.showMessageDialog(mainFrame, "Copy Complete!");
+						updateDiffMap();
+					}
+				};
+				copyFiles.start();	
 			}
 		});
 		
@@ -92,10 +118,31 @@ public class DirectoryScanner {
 			
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				copyFiles(folders.get(dir2), folders.get(dir1));
-				JOptionPane.showMessageDialog(mainFrame, "Copy Complete!");
-				updateDiffMap();
+				final JFrame progressFrame = new JFrame("Progress...");
+				final JProgressBar progress = new JProgressBar();
+				progress.setMaximum(generateDiffMap(new DefaultMutableTreeNode(), folders.get(dir2), folders.get(dir1)));
+				progress.setMinimum(0);
+				progress.setValue(0);
+				final JLabel status = new JLabel("Current Progress: ");
 				
+				progressFrame.setSize(400, 150);
+				progressFrame.setLayout(new GridLayout(0,1));
+				progressFrame.add(status);
+				progressFrame.add(progress);
+				progressFrame.setVisible(true);
+				progressFrame.revalidate();
+				
+				Thread copyFiles = new Thread() {		
+					@Override
+					public void run() {
+						copyFiles(folders.get(dir2), folders.get(dir1), progress, true, status);
+						progressFrame.setVisible(false);
+						progressFrame.dispose();
+						JOptionPane.showMessageDialog(mainFrame, "Copy Complete!");
+						updateDiffMap();
+					}
+				};
+				copyFiles.start();
 			}
 		});
 		
@@ -157,10 +204,11 @@ public class DirectoryScanner {
 		return leafCount;
 	}
 
-	private void copyFiles(Folder one, Folder two){
+	private void copyFiles(Folder one, Folder two, JProgressBar progressBar, boolean addCount, JLabel progress){
 		for(Entity e : one.getContainedFiles()){
 			if(!(e instanceof Folder)) {
 				Item toLook = (Item) e;
+				progress.setText("Current Progress: " + "Copying " + toLook.getName());
 				if(two.getItem(toLook.getName(), toLook.getExtension()) == null) {
 					try {
 						File copyFile = toLook.getFile();
@@ -177,6 +225,8 @@ public class DirectoryScanner {
 						e1.printStackTrace();
 					}
 				}
+				if(addCount) progressBar.setValue(progressBar.getValue() + 1);
+				progressBar.revalidate();
 			} else {
 				Folder toLook = (Folder) e;
 				if(two.getFolder(toLook.getName()) == null) {
@@ -184,9 +234,11 @@ public class DirectoryScanner {
 					createFile.mkdir();
 					Folder newFolder = (Folder) new Folder(toLook.getName()).setFile(createFile);
 					newFolder.setFile(createFile);
-					copyFiles(toLook, newFolder);
+					copyFiles(toLook, newFolder, progressBar, false, progress);
+					if(addCount) progressBar.setValue(progressBar.getValue() + 1);
+					progressBar.revalidate();
 				} else {
-					copyFiles(toLook, two.getFolder(toLook.getName()));
+					copyFiles(toLook, two.getFolder(toLook.getName()), progressBar, true, progress);
 				}
 			}
 		}
