@@ -117,8 +117,13 @@ public class DirectoryDiff {
 			}
 		} else {
 			int index = list.getSelectedIndex();
-			listModel.remove(index);
-			files.remove(index);
+			if (index != -1){
+				listModel.remove(index);
+				files.remove(index);
+			}else{
+				JOptionPane.showMessageDialog(frame,"Nothing to remove!","Error!",JOptionPane.ERROR_MESSAGE);
+			}
+			
 		}
 		
 		if(listModel.size() > 1){
